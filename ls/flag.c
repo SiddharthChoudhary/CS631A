@@ -21,3 +21,18 @@ struct Flags{
     bool if_u_Is_True;
     bool if_w_Is_True;
 };
+
+struct LsComponentForLOption{
+    // because remaining fields in a cell like date, permissions, will always have a definite width requirement and will not vary
+    int inodeWidth;
+    int userNameWidth;
+    int groupNameWidth;
+    int numberOfBytesWidth;
+    int fileNameWidth;
+    // char* filename;
+};
+
+struct UsernameAndGroupName{
+    char* username;
+    char* groupname;
+};

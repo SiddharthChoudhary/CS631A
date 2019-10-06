@@ -1,23 +1,17 @@
-#include<dirent.h>
-#include"flag.c"
-#include<fts.h>
-#include<grp.h>
-#include<pwd.h>
-#include<stdio.h>
-#include<stdlib.h>
-#include<string.h>
-#include<sys/stat.h>
-#include<time.h>
-#include<unistd.h>
-#include<zconf.h>
+#include"ls.h"
+#include"comparator.c"
 #define BUFFERSIZE 16384
 struct Flags flags;
-void invokingLSWithAInCurrentDirectory(char* argv[],struct Flags flags);
+void invokingLSWithInCurrentDirectory(char* argv[],struct Flags flags,int options);
 void printinLformat(FTSENT* file);
 char* generateSTmodestring(struct stat* filestat,char* permission);
 bool checkIfSuperUser();
+struct LsComponentForLOption calculateWidthOfEachCell(FTS* directoryTree,struct Flags flags);
 int main(int argc, char* argv[]){
 char ch;
+//initially setting the comparator by name as per the ls standards when there is no option provided
+compare=compareByName;
+int options = FTS_PHYSICAL|FTS_NOCHDIR;
 while((ch=getopt(argc,argv,"AacdFfhiklnqRrSstuw:"))!=-1){
     switch (ch)
     {
@@ -26,9 +20,11 @@ while((ch=getopt(argc,argv,"AacdFfhiklnqRrSstuw:"))!=-1){
         break;
     case 'a':
     flags.if_a_Is_True=true;
+    options = FTS_PHYSICAL|FTS_NOCHDIR|FTS_SEEDOT;
         break;
     case 'c':
     flags.if_c_Is_True=true;
+    compare = compareByLastChagangedTime;
         break;
     case 'd':
     flags.if_d_Is_True=true;
@@ -38,6 +34,7 @@ while((ch=getopt(argc,argv,"AacdFfhiklnqRrSstuw:"))!=-1){
         break;
     case 'f':
     flags.if_f_Is_True=true;
+    options= FTS_PHYSICAL|FTS_NOCHDIR;
         break;
     case 'h':
     flags.if_h_Is_True=true;
@@ -65,15 +62,18 @@ while((ch=getopt(argc,argv,"AacdFfhiklnqRrSstuw:"))!=-1){
         break;
     case 'S':
     flags.if_S_Is_True=true;
+    compare = compareBySize;
         break;
     case 's':
     flags.if_s_Is_True=true;
         break;
     case 't':
     flags.if_t_Is_True=true;
+    compare = compareByModifiedTime;
         break;
     case 'u':
     flags.if_u_Is_True=true;
+    compare = compareByLastAccessTime;
         break;
     case 'w':
     flags.if_w_Is_True=true;
@@ -85,7 +85,19 @@ while((ch=getopt(argc,argv,"AacdFfhiklnqRrSstuw:"))!=-1){
 if(argv[optind]==NULL){
     argv[optind]="./";
 }
-invokingLSWithAInCurrentDirectory(argv,flags);
+
+/* #####
+        Conditions for -A options,
+        To check if the user is a superuser then it will always be executed with A,
+##### */ 
+if(checkIfSuperUser()){
+    flags.if_A_Is_True=true;
+}
+/* 
+Calling the main traversal for files
+*/    
+invokingLSWithInCurrentDirectory(argv,flags,options);
+
 return 0;
 }
 bool checkIfSuperUser(){
@@ -103,22 +115,20 @@ struct stat getStatInformation(char* filename){
 
 
 int count=0;
-void invokingLSWithAInCurrentDirectory(char* argv[],struct Flags flags){
+void invokingLSWithInCurrentDirectory(char* argv[],struct Flags flags,int options){
 DIR *dir;
 struct dirent *currentFile;
 char buf[BUFFERSIZE];
 FTS *directoryTree;
 FTSENT *file, *node;
 char *argvs[]={argv[optind],NULL};
-directoryTree = fts_open(argvs,FTS_LOGICAL|FTS_NOCHDIR,NULL);
+directoryTree = fts_open(argvs,options,comparator);
+
 if(directoryTree==NULL){
     fprintf(stderr,"Directory tree itself is null\n");
 }
 while((file=fts_read(directoryTree))){
     switch (file->fts_info) {
-        // preorder case
-        case FTS_F: printf("A regular file %s\n",file->fts_name);
-                    break;
 		// case FTS_SL: printf("A symbolic link %s\n",file->fts_name);
         //             continue;
         // case FTS_SLNONE: printf("A symbolic link with non-existing target %s\n",file->fts_name);
@@ -136,17 +146,27 @@ while((file=fts_read(directoryTree))){
 			continue;
         case FTS_DP: continue;
 		}
+        /* Main traversal of directory by children which entirely runs on children of the current file. fts_level is
+        applied later to stop the traversal after one level*/
         node = fts_children(directoryTree,0);
         while(node != NULL){
+            // if the directory starts with . then we need to ignore that because of the basic nature of ls.
+            if(node->fts_info==FTS_D||node->fts_info==FTS_F){
+                if(node->fts_name[0]=='.' && !flags.if_a_Is_True && !flags.if_A_Is_True){
+                    node = node->fts_link;
+                    continue;
+                }
+            }
             if(flags.if_l_Is_True){
                 printinLformat(node);
             }else{
+                // straight away printing the file in normal cases
                 printf("%s \n",node->fts_name);
             }
             node = node->fts_link;
         }
-        // This particular section checks that whether the following is recursive or not if it is not then we 
-        // will stop recursion at the end of the traversal
+         /* This particular section checks that whether the following is recursive or not if it is not then we 
+         will stop recursion at the end of the traversal */
         if(!flags.if_R_Is_True){
             if (file->fts_level > -1)
             {
@@ -214,33 +234,122 @@ char* generateSTmodestring(struct stat* fstat,char* permissions){
     return permissions;
 };
 
+// as the name suggests it comes handy while looking out for usernames and groupnames from password file
+struct UsernameAndGroupName getUsername(int uid,int gid){
+    struct passwd* passwordStructure=getpwuid(uid);
+    struct group* groupIdStructure = getgrgid(gid);
+    struct UsernameAndGroupName userNameAndGroupName;
+    char pw_nameBuffer[10];char gw_nameBuffer[10];
+    // in case if the username or groupname in password file is missing, then we will throw the uid and gid itself
+    if(passwordStructure!=NULL){
+        if(passwordStructure->pw_name!=NULL){
+            userNameAndGroupName.username=passwordStructure->pw_name;
+        }else{
+            sprintf(pw_nameBuffer,"%d",uid);
+            userNameAndGroupName.username=pw_nameBuffer;
+        }
+    }
+    if(groupIdStructure!=NULL){
+        if(groupIdStructure->gr_name!=NULL){
+            userNameAndGroupName.groupname = groupIdStructure->gr_name;
+        }else{
+            sprintf(gw_nameBuffer,"%d",gid);
+            userNameAndGroupName.groupname=gw_nameBuffer;
+        }
+    }
+   return userNameAndGroupName; 
+};
+
 void printinLformat(FTSENT* file){
     struct tm timestructure;
     char buf[80], permissions[40]="";
     char* months[12] = {"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"};
-    char pw_name[5];char gid_name[5];
     time_t t = file->fts_statp->st_mtime;
     timestructure = *localtime(&t);
     char* permission=generateSTmodestring(file->fts_statp,permissions);
-    struct passwd* passwordStructure=getpwuid(file->fts_statp->st_uid);
-    if(passwordStructure==NULL){
-        sprintf(pw_name,"%d",file->fts_statp->st_uid);
-        passwordStructure->pw_name=pw_name;
-    }
-    struct group* groupId = getgrgid(file->fts_statp->st_gid);
-    if(groupId==NULL){
-        sprintf(gid_name,"%d",file->fts_statp->st_gid);
-        groupId->gr_name=gid_name;
-    }
+    struct UsernameAndGroupName usernameAndGroupName = getUsername(file->fts_statp->st_uid,file->fts_statp->st_gid);
     printf("%s  %d   %s    %s     %lli    %s %d %d:%d   %s\n",permission,
                                                     file->fts_statp->st_nlink,
-                                                    passwordStructure->pw_name,
-                                                    groupId->gr_name,
+                                                    usernameAndGroupName.username,
+                                                    usernameAndGroupName.groupname,
                                                     file->fts_statp->st_size,
                                                     months[timestructure.tm_mon],
                                                     timestructure.tm_mday,
                                                     timestructure.tm_hour,
                                                     timestructure.tm_min,
                                                     file->fts_name);
+}
 
+// this function calculates the width for each cell and generates the maximum width which would be required
+struct LsComponentForLOption calculateWidthOfEachCell(FTS* directoryTree,struct Flags flags){
+    FTSENT* file,*node;
+    struct LsComponentForLOption dimensions;
+    int maxInodeWidth = 0, maxUserNameIdWidth = 0, maxGroupNameWidth =0, maxBlockSizeWidth =0, maxFileNameWidth = 0;
+    while((file=fts_read(directoryTree))){
+    switch (file->fts_info) {
+        case FTS_DP: continue;
+		}
+        /* Main traversal of directory by children which entirely runs on children of the current file. fts_level is
+        applied later to stop the traversal after one level*/
+        node = fts_children(directoryTree,0);
+        while(node != NULL){
+            struct UsernameAndGroupName usernameAndGroupName;
+            //Running for directory, file and symnolic link, remember to consider the edge cases!
+            if(node->fts_info==FTS_D||node->fts_info==FTS_F||node->fts_info==FTS_SL){
+            // if the directory starts with . then we need to ignore that because of the basic nature of ls. 
+                if(node->fts_name[0]=='.' && !flags.if_a_Is_True && !flags.if_A_Is_True){
+                    
+                    if(node->fts_statp!=NULL){
+                        // storing the maximum length of inode cell                        
+                        if(node->fts_statp->st_ino){
+                            if(maxInodeWidth>strlen((char*)(node->fts_statp->st_ino))){
+                                maxInodeWidth=strlen((char*)(node->fts_statp->st_ino));
+                            }
+                        }
+                        // storing the length of username and groupname by calling getusername function to read username and groupname from PASSWORD file        
+                        if(node->fts_statp->st_uid && node->fts_statp->st_gid){
+                            usernameAndGroupName = getUsername(node->fts_statp->st_uid,node->fts_statp->st_gid);
+                            if(maxUserNameIdWidth>strlen(usernameAndGroupName.username)){
+                                maxUserNameIdWidth=strlen(usernameAndGroupName.username);
+                            }
+                            if(maxGroupNameWidth>strlen(usernameAndGroupName.groupname)){
+                                maxGroupNameWidth = strlen(usernameAndGroupName.groupname);
+                            }
+                        }
+                        //  storing the max block size width for the file
+                        if(node->fts_statp->st_size){
+                            if(maxBlockSizeWidth>strlen((char*)(node->fts_statp->st_size))){
+                                maxBlockSizeWidth=strlen((char*)(node->fts_statp->st_size));
+                            }
+                        }
+
+                        //assuming there will always be a name for a file
+                        if(maxFileNameWidth>strlen(file->fts_name)){
+                            maxFileNameWidth=strlen(file->fts_name);
+                        }
+
+                    }
+                    node = node->fts_link;
+                    continue;
+                }
+            }
+            node = node->fts_link;
+        }
+         /* This particular section checks that whether the following is recursive or not if it is not then we 
+         will stop recursion at the end of the traversal */
+        if(!flags.if_R_Is_True){
+            if (file->fts_level > -1)
+            {
+                if(fts_set(directoryTree, file, FTS_SKIP)==-1){
+                    fprintf(stderr,"Error occured while using fts_set \n");
+                };
+            }
+        }
+    }
+    dimensions.inodeWidth           =   maxInodeWidth;
+    dimensions.userNameWidth        =   maxUserNameIdWidth;
+    dimensions.groupNameWidth       =   maxGroupNameWidth;
+    dimensions.numberOfBytesWidth   =   maxBlockSizeWidth;
+    dimensions.fileNameWidth        =   maxFileNameWidth;
+    return dimensions;
 }
