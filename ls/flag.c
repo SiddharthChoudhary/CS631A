@@ -25,8 +25,10 @@ struct Flags{
 struct LsComponentForLOption{
     // because remaining fields in a cell like date, permissions, will always have a definite width requirement and will not vary
     int inodeWidth;
+    int numberOfLinks;
     int userNameWidth;
     int groupNameWidth;
+    int blocksWidth;
     int numberOfBytesWidth;
     int fileNameWidth;
     // char* filename;

@@ -16,6 +16,9 @@ int comparator(const FTSENT **file1, const FTSENT **file2){
     based on what flags are put when */
     return compare(file1ActualPointer,file2ActualPointer);
 }
+void* compareInCaseOfNoSorting(){
+    return NULL;
+}
 int compareByName(const FTSENT *file1, const FTSENT *file2){
     return strcmp(file1->fts_name, file2->fts_name);
 }
