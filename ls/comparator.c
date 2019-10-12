@@ -22,15 +22,69 @@ void* compareInCaseOfNoSorting(){
 int compareByName(const FTSENT *file1, const FTSENT *file2){
     return strcmp(file1->fts_name, file2->fts_name);
 }
-int compareByLastChagangedTime(const FTSENT *file1, const FTSENT *file2){
-    return file2->fts_statp->st_ctime - file1->fts_statp->st_ctime;
+int compareByLastChangedTime(const FTSENT *file1, const FTSENT *file2){
+    if(file2->fts_statp->st_ctimespec.tv_sec > file1->fts_statp->st_ctimespec.tv_sec){
+        return 1;
+    }else{
+        return -1;
+    };
 }
 int compareByLastAccessTime(const FTSENT *file1, const FTSENT *file2){
-    return file2->fts_statp->st_atime - file1->fts_statp->st_atime;
+    if(file2->fts_statp->st_atimespec.tv_sec > file1->fts_statp->st_atimespec.tv_sec){
+        return 1;
+    }else{
+        return -1;
+    };
 }
 int compareByModifiedTime(const FTSENT *file1, const FTSENT *file2){
-    return file2->fts_statp->st_mtime - file1->fts_statp->st_mtime;
+    if(file2->fts_statp->st_mtimespec.tv_sec > file1->fts_statp->st_mtimespec.tv_sec){
+        return 1;
+    }else{
+        return -1;
+    };
 }
 int compareBySize(const FTSENT *file1, const FTSENT *file2){
-    return file2->fts_statp->st_size - file1->fts_statp->st_size;
+    if(file2->fts_statp->st_size > file1->fts_statp->st_size){
+        return 1;
+    }else{
+        return -1;
+    };
+}
+
+/* 
+    Reversal
+ */
+
+int compareByNameReverse(const FTSENT *file1, const FTSENT *file2){
+    return strcmp(file2->fts_name, file1->fts_name);
+}
+int compareBySizeReverse(const FTSENT *file1, const FTSENT *file2){
+    if(file1->fts_statp->st_size > file2->fts_statp->st_size){
+        return 1;
+    }else{
+        return -1;
+    };
+}
+int compareByModifiedTimeReverse(const FTSENT *file1, const FTSENT *file2){
+    if(file1->fts_statp->st_mtimespec.tv_sec > file2->fts_statp->st_mtimespec.tv_sec){
+        return 1;
+    }else{
+        return -1;
+    };
+}
+int compareByLastAccessTimeReverse(const FTSENT *file1, const FTSENT *file2){
+    if(file1->fts_statp->st_atimespec.tv_sec > file2->fts_statp->st_atimespec.tv_sec){
+        return 1;
+    }else
+    {
+        return -1;
+    }
+    ;
+}
+int compareByLastChagangedTimeReverse(const FTSENT *file1, const FTSENT *file2){
+    if(file1->fts_statp->st_ctimespec.tv_sec - file2->fts_statp->st_ctimespec.tv_sec){
+        return 1;
+    }else{
+        return -1;
+    };
 }

@@ -1,6 +1,6 @@
 {
     "files.associations": {
         "ls.h": "c",
-        "grp.h": "c"
+        "print.h": "c"
     }
 }
