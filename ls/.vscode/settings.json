@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "ls.h": "c",
-        "print.h": "c"
+        "print.h": "c",
+        "unistd.h": "c"
     }
 }

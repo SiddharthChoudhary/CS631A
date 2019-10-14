@@ -31,7 +31,7 @@ struct LsComponentForLOption{
     int blocksWidth;
     int numberOfBytesWidth;
     int fileNameWidth;
-    long total;
+    long total[100];
     // char* filename;
 };
 

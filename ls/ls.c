@@ -154,6 +154,7 @@ void checkForNonPrintableCharacters(char* filename){
            if(flags.if_q_Is_True){
             filename[i]='?';
            }else if(flags.if_w_Is_True){
+               //do nothing and let it pass
            }
        }
     i++;
@@ -168,8 +169,8 @@ void* mallocAssignerCharPointer(){
    return (char*)malloc(n);
 }
 char* printSign(FTSENT* file,struct Flags flags){
-    char *filename = malloc(strlen(file->fts_name) + 1);
-    strcpy(filename,file->fts_name);
+    char *filename = malloc(strlen(flags.if_d_Is_True?file->fts_path:file->fts_name) + 1);
+    strcpy(filename,flags.if_d_Is_True?file->fts_path:file->fts_name);
     if(flags.if_F_Is_True){
         if(S_ISDIR(file->fts_statp->st_mode)){
             if(file->fts_info!=FTS_DOT){
@@ -206,6 +207,9 @@ long long blocksizeCalculator(int blocks){
     long long blocksize=0;
     char* buffernew = buffer;
     char sizeInKiloBytesOrBytesInEnvBlockSize=' ';
+    if(!(getenv("BLOCKSIZE")>0)){
+        errorInBlockSize=true;
+    }
     sprintf(buffer,"%s",getenv("BLOCKSIZE"));
     //you will have to set everythingIsFine variable as true to execute calculation
     bool unknownBlocksize=false,characterEncountered=false,everythingIsFine=false,minimumBlockSizeIs=false,maximumBlockSizeIs=false;
@@ -215,7 +219,7 @@ long long blocksizeCalculator(int blocks){
             //in case of if it is B or K or  M or  G or b or k or m or g
             if((ch==75||ch==77||ch==71)||(ch==103||ch==107||ch==109)){
                 //case where we already encountered a character in the string and now we are seeing an another one, So break
-                if(characterEncountered){
+                if(characterEncountered && strlen(buffer)>1){
                     unknownBlocksize=true;
                     break;
                 }
@@ -229,6 +233,11 @@ long long blocksizeCalculator(int blocks){
             unknownBlocksize = true;
         }
     }   
+    if(strlen(buffer)==1){
+        if(buffer[0]=='k'||buffer[0]=='m'||buffer[0]=='g'||buffer[0]=='K'||buffer[0]=='M'||buffer[0]=='G'){
+            sprintf(bufferForBlocksizeBreaking+strlen(bufferForBlocksizeBreaking),"%d",1);
+        }
+    }
         //unknown block size error
         if(unknownBlocksize){
             //assigning by default block size as 1024
@@ -261,39 +270,40 @@ long long blocksizeCalculator(int blocks){
            case 'g':blocksizeBufferRange=atoi(bufferForBlocksizeBreaking)*BLOCKSIZE1024*BLOCKSIZE1024*BLOCKSIZE1024;
            break;
        }
-            if(blocksizeBufferRange<BLOCKSIZE512){
-                minimumBlockSizeIs = true;
-                everythingIsFine=false;
-            }
-            else if((blocksizeBufferRange>BLOCKSIZE1024X1024X1024)){
-                maximumBlockSizeIs = true;
-                everythingIsFine=false;
-            }
+        if(blocksizeBufferRange<BLOCKSIZE512){
+            minimumBlockSizeIs = true;
+            everythingIsFine=false;
+        }
+        else if((blocksizeBufferRange>BLOCKSIZE1024X1024X1024)){
+            maximumBlockSizeIs = true;
+            everythingIsFine=false;
+        }
         //because if the block size is unknown then there will be error thrown anyway before all this
-            if(maximumBlockSizeIs){
-                blocksize=BLOCKSIZE1024X1024X1024;
-                if(errorInBlockSize){
-                    printf("ls: maximum blocksize is 1G\n");
-                }
+        if(maximumBlockSizeIs){
+            blocksize=BLOCKSIZE1024X1024X1024;
+            if(errorInBlockSize){
+                printf("ls: maximum blocksize is 1G\n");
             }
-            else if(minimumBlockSizeIs){
-                blocksize = BLOCKSIZE512;
-                if(errorInBlockSize){
-                    printf("ls: %s: minimum blocksize is 512\n",getenv("BLOCKSIZE"));
-                }
-            }else{
-                blocksize = (float)atoi(getenv("BLOCKSIZE"));
+        }
+        else if(minimumBlockSizeIs){
+            blocksize = BLOCKSIZE512;
+            if(errorInBlockSize){
+                printf("ls: %s: minimum blocksize is 512\n",getenv("BLOCKSIZE"));
             }
-            //main calculation despite all the errors and if it's not in the range
-            return (long long)ceil((float)((blocks/blocksize)*BLOCKSIZE512)/blocksizeBufferRange);
+        }
+        //main calculation despite all the errors and if it's not in the range
+        return mainCalculationForBlockSize(blocks,blocksize,blocksizeBufferRange);
 };
+long long mainCalculationForBlockSize(int blocks, long long blocksize,long int blocksizeBufferRange){
+            long long result = (long long)ceil((float)(((float)blocks/blocksizeBufferRange)*BLOCKSIZE512));
+            return result;
+}
 //core invoking function for our program
 void invokingLSWithInCurrentDirectory(char* argv[],struct Flags flags,int options,int argc){
     DIR *dir;
     int i=0;
     char buf[BUFFERSIZE];
-    char* argvs[argc-optind+1],*printableSignString;
-    long long blocksize;
+    char* argvs[argc-optind+1];
     FTS *directoryTree;
     FTSENT *file, *node;
     struct dirent *currentFile;
@@ -305,13 +315,13 @@ void invokingLSWithInCurrentDirectory(char* argv[],struct Flags flags,int option
     // open the directory to read the dimensions for each cell
     directoryTree = fts_open(argvs,options,comparator);
     dimensionsStructure=calculateWidthOfEachCell(directoryTree,flags);
-    // will have to reopen directory cause we close the directory
+    // will have to reopen directory cause we closed the directory
     directoryTree = fts_open(argvs,options,comparator);
     if(directoryTree==NULL){
         fprintf(stderr,"Directory tree itself is null\n");
     }
-
     if(!flags.if_d_Is_True){
+        int i=0;
         /* 
             reading the directory again for printing and for the core part 
         */
@@ -321,52 +331,62 @@ void invokingLSWithInCurrentDirectory(char* argv[],struct Flags flags,int option
                 //             continue;
                 // case FTS_SLNONE: printf("A symbolic link with non-existing target %s\n",file->fts_name);
                 //             continue;
-                case FTS_DP: continue;
-                case FTS_ERR: continue;
-                case FTS_DNR:continue;
-                case FTS_DC:continue;
-                case FTS_NOSTAT:continue;
+                case FTS_DP: 
+                        continue;
+                case FTS_ERR:
+                        fprintf(stderr,"Error : %s", strerror(errno));
+                        continue;
+                        break;
+                case FTS_DNR:
+                        fprintf(stderr,"Error : %s", strerror(errno));
+                        continue;
+                        break;
+                default: break;
                 }
                 // displaying the total or the path name in case of multiple directories
                 if((flags.if_R_Is_True && file->fts_info==FTS_D) || file->fts_info==FTS_D){
+                    if(i){
                     printf("%s:\n",file->fts_path);
+                    }
                 }
                 /* Main traversal of directory by children which entirely runs on children of the current file. fts_level is
                 applied later to stop the traversal after one level*/
                 node = fts_children(directoryTree,0);
+                /* 
+                    In case if the arguements itself is a file having no children 
+                */ 
+               if(flags.if_s_Is_True||flags.if_l_Is_True){
+                if(file->fts_info==FTS_D && fts_children(directoryTree,0)!=NULL){
+                        if(flags.if_h_Is_True){
+                            // long value = mainCalculationForBlockSize(,);
+                            //printf("total %lu\n", value);
+                            printf("total %s\n",hPrintableFormat(dimensionsStructure.total[i]*512,BLOCKSIZE1024));
+                        }else{
+                            long value = blocksizeCalculator(dimensionsStructure.total[i]);
+                            printf("total %lu\n", value);
+                            //printf("total %li\n",dimensionsStructure.total[i]);
+                        }
+                        i++;
+                }
+               }
+                //checking here, because in case of recursive option we are getting duplicate prints.
+                if(node==NULL && !flags.if_R_Is_True){
+                    if(file->fts_info!=FTS_D||file->fts_info!=FTS_DP){
+                        printInNormalForm(file,dimensionsStructure,flags);
+                        continue;
+                    }
+                }
+
                 while(node != NULL){
-                    // if the directory starts with . then we need to ignore that because of the basic nature of ls.
-                    if(node->fts_info==FTS_D||node->fts_info==FTS_F){
+                    //main iteration
+                     if(node->fts_info==FTS_D||node->fts_info==FTS_F){
                         if(node->fts_name[0]=='.' && !flags.if_a_Is_True && !flags.if_A_Is_True){
                             node = node->fts_link;
                             continue;
                         }
                     }
-                    if(flags.if_l_Is_True){
-                        printinLformat(node,dimensionsStructure,flags);
-                    }else{
-                        // straight away printing the file in normal cases
-                        if(flags.if_i_Is_True){
-                            printf("%*lli ",dimensionsStructure.inodeWidth,node->fts_statp->st_ino);
-                        }
-                        //earlier was using fts_statp's blocks but later got to know that env's blocksize can vary
-                        if(flags.if_s_Is_True && !flags.if_h_Is_True){
-                            blocksize=blocksizeCalculator(node->fts_statp->st_blocks);
-                            if(errorInBlockSize){
-                                errorInBlockSize=false;
-                            }
-                            printf("%*lli ",dimensionsStructure.blocksWidth,blocksize);
-                        }else if(flags.if_s_Is_True && flags.if_h_Is_True){
-                            char* sizeInHumanReadable=hPrintableFormat(node->fts_statp->st_size);
-                            printf("%s ",sizeInHumanReadable);
-                            free(sizeInHumanReadable);
-                        }
-                        
-                        checkForNonPrintableCharacters(node->fts_name);
-                        printableSignString=printSign(node,flags);
-                        printf("%s \n",printableSignString);
-                        free(printableSignString);
-                    }
+                    printInNormalForm(node,dimensionsStructure,flags);
+
                     node = node->fts_link;
                 }
                 if((flags.if_R_Is_True && file->fts_info==FTS_D) || file->fts_info==FTS_D){
@@ -383,13 +403,41 @@ void invokingLSWithInCurrentDirectory(char* argv[],struct Flags flags,int option
                     }
                 }
         }
-            printf("\n");
     }else{
         traverseInCaseOfDFlag(directoryTree,dimensionsStructure,flags);
     }
     fts_close(directoryTree);
 };
 
+void printInNormalForm(FTSENT* node,struct LsComponentForLOption dimensionsStructure, struct Flags flags){
+    long long blocksize;
+    char *printableSignString;
+    // if the directory starts with . then we need to ignore that because of the basic nature of ls.
+                    if(flags.if_l_Is_True){
+                        printinLformat(node,dimensionsStructure,flags);
+                    }else{
+                            // straight away printing the file in normal cases
+                            if(flags.if_i_Is_True){
+                                printf("%*lli ",dimensionsStructure.inodeWidth,node->fts_statp->st_ino);
+                            }
+                            //earlier was using fts_statp's blocks but later got to know that env's blocksize can vary
+                            if(flags.if_s_Is_True && !flags.if_h_Is_True){
+                                blocksize=blocksizeCalculator(node->fts_statp->st_blocks);
+                                if(errorInBlockSize){
+                                    errorInBlockSize=false;
+                                }
+                                printf("%*lli ",dimensionsStructure.blocksWidth,blocksize);
+                            }else if(flags.if_s_Is_True && flags.if_h_Is_True){
+                                char* sizeInHumanReadable=hPrintableFormat(node->fts_statp->st_size,BLOCKSIZE1024);
+                                printf("%s ",sizeInHumanReadable);
+                                free(sizeInHumanReadable);
+                            }
+                            checkForNonPrintableCharacters(node->fts_name);
+                            printableSignString=printSign(node,flags);
+                            printf("%s \n",printableSignString);
+                            free(printableSignString);
+                        }
+}
 //generating permissions based on fstat->stmode and passing permission variable to avoid block level allocation error
 char* generateSTmodestring(struct stat* fstat,char* permissions){
     if(S_ISDIR(fstat->st_mode)){
@@ -517,7 +565,7 @@ void printinLformat(FTSENT* file,struct LsComponentForLOption dimensions, struct
         }
         if(flags.if_s_Is_True){
             if(flags.if_h_Is_True){
-            char* sizeInHumanReadable=hPrintableFormat(file->fts_statp->st_blocks*BLOCKSIZE512);
+            char* sizeInHumanReadable=hPrintableFormat(file->fts_statp->st_blocks*BLOCKSIZE512,BLOCKSIZE1024);
             printf("%*s",dimensions.blocksWidth,sizeInHumanReadable);
             free(sizeInHumanReadable);
             }else{
@@ -529,7 +577,7 @@ void printinLformat(FTSENT* file,struct LsComponentForLOption dimensions, struct
             }
         }
         if(flags.if_h_Is_True){
-            filesize=hPrintableFormat(file->fts_statp->st_size);
+            filesize=hPrintableFormat(file->fts_statp->st_size,BLOCKSIZE1024);
         }else{
             sprintf(filesize,"%lli",file->fts_statp->st_size);
         }
@@ -538,9 +586,9 @@ void printinLformat(FTSENT* file,struct LsComponentForLOption dimensions, struct
         if(file->fts_info==FTS_SL||file->fts_info==FTS_SLNONE){
              //case when your arguement is a symlink itself
              if(file->fts_level == 0)
-                sprintf(fileNameInCaseofSymbolicLnk, "%s", file->fts_name);
+                sprintf(fileNameInCaseofSymbolicLnk, "%s", file->fts_path);
             else 
-                sprintf(fileNameInCaseofSymbolicLnk, "%s/%s", file->fts_accpath,file->fts_name);  
+                sprintf(fileNameInCaseofSymbolicLnk, "%s/%s", file->fts_accpath,file->fts_name);
             if(readlink(fileNameInCaseofSymbolicLnk,pathInCaseOfSymbolicLink,sizeof(pathInCaseOfSymbolicLink)-1)==-1){
                 fprintf(stderr,"Error: %s\n",strerror(errno));
                 return;
@@ -574,42 +622,33 @@ void traverseInCaseOfDFlag(FTS* directoryTree,struct LsComponentForLOption dimen
     long long blocksize;
     char* printableSignString;
     while((file=fts_read(directoryTree))!=NULL){
-        if( file->fts_info==FTS_D || file->fts_info==FTS_F){
-            if(flags.if_l_Is_True){
-                printinLformat(file,dimensions,flags);
-            }else{
-             if(flags.if_i_Is_True){
-                            printf("%*lli ",dimensions.inodeWidth,file->fts_statp->st_ino);
-                        }
-                        //earlier was using fts_statp's blocks but later got to know that env's blocksize can vary
-                        if(flags.if_s_Is_True && !flags.if_h_Is_True){
-                            blocksize=blocksizeCalculator(file->fts_statp->st_blocks);
-                            if(errorInBlockSize){
-                                errorInBlockSize=false;
-                            }
-                            printf("%*lli ",dimensions.blocksWidth,blocksize);
-                        }else if(flags.if_s_Is_True && flags.if_h_Is_True){
-                            char* sizeInHumanReadable=hPrintableFormat(file->fts_statp->st_size);
-                            printf("%s ",sizeInHumanReadable);
-                            free(sizeInHumanReadable);
-                        }
-                        checkForNonPrintableCharacters(file->fts_name);
-                        printableSignString=printSign(file,flags);
-                        printf("%s \n",printableSignString);
-                        free(printableSignString);   
-            }
+        if(file->fts_info==FTS_DP){
+            continue;
         }
-        fts_set(directoryTree,file,FTS_SKIP);
+        if(file->fts_info==FTS_D||file->fts_info==FTS_F){
+                        if(file->fts_name[0]=='.' && !flags.if_a_Is_True && !flags.if_A_Is_True){
+                            file = file->fts_link;
+                            continue;
+                        }
+                    }
+        //calling the printing function 
+        printInNormalForm(file,dimensions,flags);
+        
+        if(flags.if_d_Is_True){
+            fts_set(directoryTree,file,FTS_SKIP);
+        }
     }
 }
 // this function calculates the width for each cell and generates the maximum width which would be required
 struct LsComponentForLOption calculateWidthOfEachCell(FTS* directoryTree,struct Flags flags){
     FTSENT* file,*node;
-    int maxInodeWidth = 0, maxUserNameIdWidth = 0,maxNumberOfLinks=0, maxblocksWidth=0, maxGroupNameWidth =0, maxBlockSizeWidth =0, maxFileNameWidth = 0,total=0;
+    int maxInodeWidth = 0, maxUserNameIdWidth = 0,maxNumberOfLinks=0, maxblocksWidth=0, maxGroupNameWidth =0, maxBlockSizeWidth =0, maxFileNameWidth = 0;
     char bufferForMaxInodeWidth[BUFFERSIZE20],bufferForMaximumBlocksWidth[BUFFERSIZE20], bufferForMaxNumberOfLinks[BUFFERSIZE80],bufferForMaxUserNameWidth[BUFFERSIZE80], bufferForMaGroupNameWIdth[BUFFERSIZE80], bufferForMaxBlockSizeWidth[BUFFERSIZE80], bufferForMaxFileNameWidth[BUFFERSIZE200];
     struct LsComponentForLOption dimensions;
-    long long blocksize;
+    int i=0;
+    long long blocksize,total=0;
         while((file=fts_read(directoryTree))){
+            total=0;
             switch (file->fts_info) {
                 case FTS_DNR: fprintf(stderr,"cannot read the directory %s",file->fts_name);
                         break;
@@ -625,7 +664,6 @@ struct LsComponentForLOption calculateWidthOfEachCell(FTS* directoryTree,struct 
                 applied later to stop the traversal after one level*/
                 node = fts_children(directoryTree,0);
                 while(node != NULL){
-
                     if(flags.if_d_Is_True){
                         node=node->fts_parent;
                     }
@@ -655,24 +693,20 @@ struct LsComponentForLOption calculateWidthOfEachCell(FTS* directoryTree,struct 
                                         if(errorInBlockSize){
                                             errorInBlockSize=false;
                                         }
-                                        total+=blocksize;
                                         sprintf(bufferForMaximumBlocksWidth,"%lli",blocksize);
-                                        if(maxblocksWidth<strlen(bufferForMaximumBlocksWidth)){
-                                            maxblocksWidth=strlen(bufferForMaximumBlocksWidth);
-                                        }
                                     }else if(flags.if_h_Is_True){
                                         blocksize=blocksizeCalculator(node->fts_statp->st_blocks*BLOCKSIZE512);
                                         if(errorInBlockSize){
                                             errorInBlockSize=false;
                                         }
-                                        total+=blocksize;
-                                        char* sizeInHumanReadable=hPrintableFormat(node->fts_statp->st_blocks*BLOCKSIZE512);
+                                        char* sizeInHumanReadable=hPrintableFormat(node->fts_statp->st_blocks*BLOCKSIZE512,BLOCKSIZE1024);
                                         sprintf(bufferForMaximumBlocksWidth,"%s",sizeInHumanReadable);
+                                        free(sizeInHumanReadable);
+                                    }
+                                        total+=node->fts_statp->st_blocks;
                                         if(maxblocksWidth<strlen(bufferForMaximumBlocksWidth)){
                                             maxblocksWidth=strlen(bufferForMaximumBlocksWidth);
                                         }
-                                        free(sizeInHumanReadable);
-                                    }
                                 }
                                 // storing the length of username and groupname by calling getusername function to read username and groupname from PASSWORD file        
                                 if(node->fts_statp->st_uid>=0 && node->fts_statp->st_gid>=0){
@@ -693,7 +727,7 @@ struct LsComponentForLOption calculateWidthOfEachCell(FTS* directoryTree,struct 
                                             maxBlockSizeWidth=strlen(bufferForMaxBlockSizeWidth);
                                         }
                                     }else if(flags.if_h_Is_True){
-                                        char* sizeInHumanReadable=hPrintableFormat(node->fts_statp->st_size);
+                                        char* sizeInHumanReadable=hPrintableFormat(node->fts_statp->st_size,BLOCKSIZE1024);
                                         sprintf(bufferForMaxBlockSizeWidth,"%s",sizeInHumanReadable);
                                         if(maxBlockSizeWidth<strlen(bufferForMaxBlockSizeWidth)){
                                             maxBlockSizeWidth=strlen(bufferForMaxBlockSizeWidth);
@@ -720,6 +754,9 @@ struct LsComponentForLOption calculateWidthOfEachCell(FTS* directoryTree,struct 
                     node = node->fts_link;
                 }
 
+                dimensions.total[i]=total;
+                i++;
+                
                 if(flags.if_d_Is_True){
                     fts_set(directoryTree,file,FTS_SKIP);
                 }
@@ -742,7 +779,6 @@ struct LsComponentForLOption calculateWidthOfEachCell(FTS* directoryTree,struct 
     dimensions.numberOfBytesWidth   =   maxBlockSizeWidth+1;
     dimensions.numberOfLinks        =   maxNumberOfLinks+1;
     dimensions.blocksWidth          =   maxblocksWidth+1;
-    dimensions.total                =   total;
     dimensions.fileNameWidth        =   maxFileNameWidth+1;
     return dimensions;
 }
