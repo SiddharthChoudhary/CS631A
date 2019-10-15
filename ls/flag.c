@@ -36,7 +36,8 @@ struct LsComponentForLOption{
     long total[10000];
 };
 
+/* because of the maximum length being 32 for username and groupname in linux systems */
 struct UsernameAndGroupName{
-    char* username;
-    char* groupname;
+    char username[32];
+    char groupname[32];
 };

@@ -11,6 +11,7 @@
 #include<stdlib.h>
 #include<string.h>
 #include<sys/stat.h>
+#include<sys/time.h>
 #include<time.h>
 #include<unistd.h>
 #include<zconf.h>
@@ -31,13 +32,9 @@ struct Flags flags;
 bool errorInBlockSize=true;
 
 void invokingLSWithInCurrentDirectory(char* argv[],struct Flags flags,int options,int argc);
-void printinLformat(FTSENT* file, struct LsComponentForLOption dimensions,struct Flags flags);
-char* generateSTmodestring(struct stat* filestat,char* permission);
 bool checkIfSuperUser();
 long blocksizeCalculator(int blocks);
-char* printSign(FTSENT* file,struct Flags flags);
 struct LsComponentForLOption calculateWidthOfEachCell(FTS* file,struct Flags flags);
 void checkForNonPrintableCharacters(char* filename1);
 void traverseInCaseOfDFlag(FTS* directory,struct LsComponentForLOption dimensions,struct Flags flags);
-void printInNormalForm(FTSENT *node, struct LsComponentForLOption dimensions,struct Flags flags);
 long mainCalculationForBlockSize(int blocks, long int blocksizeBuffer);
