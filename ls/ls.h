@@ -34,10 +34,10 @@ void invokingLSWithInCurrentDirectory(char* argv[],struct Flags flags,int option
 void printinLformat(FTSENT* file, struct LsComponentForLOption dimensions,struct Flags flags);
 char* generateSTmodestring(struct stat* filestat,char* permission);
 bool checkIfSuperUser();
-long long blocksizeCalculator(int blocks);
+long blocksizeCalculator(int blocks);
 char* printSign(FTSENT* file,struct Flags flags);
 struct LsComponentForLOption calculateWidthOfEachCell(FTS* file,struct Flags flags);
 void checkForNonPrintableCharacters(char* filename1);
 void traverseInCaseOfDFlag(FTS* directory,struct LsComponentForLOption dimensions,struct Flags flags);
 void printInNormalForm(FTSENT *node, struct LsComponentForLOption dimensions,struct Flags flags);
-long long mainCalculationForBlockSize(int blocks, long long blocksize, long int blocksizeBuffer);
+long mainCalculationForBlockSize(int blocks, long int blocksizeBuffer);

@@ -9,7 +9,7 @@ char* hPrintableFormat(off_t st_blocks,int blocksize){
     int count=0;
     char ch='B';
     if(st_blocks<999){
-       sprintf(size,"%lli%c",st_blocks,ch);
+       sprintf(size,"%li%c",st_blocks,ch);
     }else{
       while(round(divisor/blocksize)>0.0)
       {
@@ -38,4 +38,4 @@ char* hPrintableFormat(off_t st_blocks,int blocksize){
       }
     }
     return size;
-};
+}
