@@ -33,7 +33,7 @@ struct LsComponentForLOption{
     int blocksWidth;
     int numberOfBytesWidth;
     int fileNameWidth;
-    long total[10000];
+    long total[100000];
 };
 
 /* because of the maximum length being 32 for username and groupname in linux systems */

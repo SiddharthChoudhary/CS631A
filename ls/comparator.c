@@ -14,7 +14,7 @@ int comparator(const FTSENT **file1, const FTSENT **file2){
     return compare(file1ActualPointer,file2ActualPointer);
 }
 void* compareInCaseOfNoSorting(){
-    return NULL;
+    return NULL; 
 }
 int compareByName(const FTSENT *file1, const FTSENT *file2){
     return strcmp(file1->fts_name, file2->fts_name);

@@ -73,9 +73,6 @@ int main(int argc, char* argv[]){
             break;
         case 'S':
         flags.if_S_Is_True=true;
-        flags.if_c_Is_True=false;
-        flags.if_u_Is_True=false;
-        flags.if_t_Is_True=false;
         compare = compareBySize;
             break;
         case 's':
@@ -102,17 +99,13 @@ int main(int argc, char* argv[]){
     if(argv[optind]==NULL){
         argv[optind]=".";
     }
-
     /*
-            Conditions for -A options,
-            To check if the user is a superuser then it will always be executed with A,
+        Conditions for -A options,
+        To check if the user is a superuser then it will always be executed with A,
     */ 
     if(checkIfSuperUser()){
         flags.if_A_Is_True=true;
     }
-
-    
-
     if(flags.if_t_Is_True){
         compare=compareByModifiedTime;
             if(flags.if_c_Is_True){
@@ -120,16 +113,18 @@ int main(int argc, char* argv[]){
             }else if(flags.if_u_Is_True){
                 compare=compareByLastAccessTime;
             }
-    }else if(!flags.if_t_Is_True){
+    }else if(!flags.if_t_Is_True && !flags.if_S_Is_True){
         compare=compareByName;
     }
-
-
     /* 
         setting sorting functions based on the order they are being called, basically to override each other 
     */
     if(flags.if_r_Is_True){
-        compare=compareByNameReverse;
+        if(flags.if_S_Is_True){
+            compare=compareBySizeReverse;
+        }else{
+            compare=compareByNameReverse;
+        }
         if(flags.if_t_Is_True){
             compare=compareByModifiedTimeReverse;
             if(flags.if_u_Is_True){
@@ -143,9 +138,7 @@ int main(int argc, char* argv[]){
     /* 
     Calling the main traversal for files
     */  
-
     invokingLSWithInCurrentDirectory(argv,flags,options,argc);
-
     return 0;
 }
 bool checkIfSuperUser(){
@@ -325,7 +318,6 @@ void invokingLSWithInCurrentDirectory(char* argv[],struct Flags flagsLs,int opti
                         i++;
                 }
                }
-
                 /* checking here, because in case of recursive option we are getting duplicate prints. */
                 if(node==NULL && !flagsLs.if_R_Is_True){
                     if(file->fts_info!=FTS_D||file->fts_info!=FTS_DP){
@@ -333,9 +325,9 @@ void invokingLSWithInCurrentDirectory(char* argv[],struct Flags flagsLs,int opti
                         continue;
                     }
                 }
-
                 /* Main iteration of the loop */
                 while(node != NULL){
+
                      if(node->fts_info==FTS_D||node->fts_info==FTS_F){
                         if(node->fts_name[0]=='.' && !flagsLs.if_a_Is_True && !flagsLs.if_A_Is_True){
                             node = node->fts_link;
@@ -343,9 +335,9 @@ void invokingLSWithInCurrentDirectory(char* argv[],struct Flags flagsLs,int opti
                         }
                     }
                     printInNormalForm(node,dimensionsStructure,flagsLs);
-
                     node = node->fts_link;
                 }
+                
                 if((flagsLs.if_R_Is_True && file->fts_info==FTS_D) || file->fts_info==FTS_D){
                     printf("\n");
                 }
@@ -380,7 +372,6 @@ void traverseInCaseOfDFlag(FTS* directoryTree,struct LsComponentForLOption dimen
                     }
         /* calling the printing function  */
         printInNormalForm(file,dimensions,flagsInD);
-        
         if(flagsInD.if_d_Is_True){
             if(fts_set(directoryTree,file,FTS_SKIP)==-1){
                 fprintf(stderr,"Error: %s\n",strerror(errno));
