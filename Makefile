@@ -2,7 +2,7 @@ EXEC = sish
 SRC = sish.c execute.c
 OBJS = sish.o execute.o
 MAIN = main.c
-CFLAGS = -Wall -Werror -Wextra -Wformat=2 -Wjump-misses-init -Wlogical-op -Wpedantic -Wshadow -lmagic 
+CFLAGS = -Wall -Wextra -Wformat=2 -Wjump-misses-init -Wlogical-op -Wpedantic -Wshadow -lmagic 
 
 all: ${EXEC}
 	cc -o ${EXEC} ${OBJS} -g ${MAIN} ${CFLAGS}

@@ -34,3 +34,5 @@ int redirect_commands(char *commands[],char* duplicate[],int number_of_commands,
 bool check_if_redirect_io_and_create_a_copy(char *commands[],char *duplicate[]);
 int execute_with_execvp(char* commands[],char* input,char* output,bool append, bool background_process,bool redirection);
 int redirect_to_std_input_output_from_fd(char* input,char* output,bool append);
+char* parse_input_string(char* input);
+int get_length(char *input);

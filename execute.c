@@ -19,7 +19,7 @@ int redirect_to_std_input_output_from_fd(char* input,char* output,bool append){
         }
     if (output) {
         if (append) {
-            if((fd = open(output, O_CREAT | O_TRUNC | O_WRONLY, DFTPERMISSION)) == -1){
+            if((fd = open(output, O_CREAT | O_APPEND | O_WRONLY, DFTPERMISSION)) == -1){
                 perror("Cannot create file:\n");
                 return EXIT_FAILURE;
             }
@@ -29,7 +29,7 @@ int redirect_to_std_input_output_from_fd(char* input,char* output,bool append){
             }
             close(fd);
         }
-        if((fd = open(output, O_CREAT | O_APPEND | O_WRONLY, DFTPERMISSION)) == -1){
+        if((fd = open(output, O_CREAT | O_TRUNC | O_WRONLY, DFTPERMISSION)) == -1){
             perror("Cannot create file\n");
             return EXIT_FAILURE;
         }
@@ -64,11 +64,10 @@ int execute_with_execvp(char* commands[],char* input,char* output,bool append,bo
             perror("Signal Handler Issue in Fork \n");
         }
         if(redirection){
-            if(redirect_to_std_input_output_from_fd(input,output,append)==EXIT_FAILURE){
-                return EXIT_FAILURE;
-            };
+            redirect_to_std_input_output_from_fd(input,output,append);
         }
         if (execvp(commands[0], commands) == -1) {
+            fprintf(stderr, "out = %s\n", commands[0]);
             perror("ERROR");
             kill(getpid(),SIGTERM);
         }

@@ -32,6 +32,7 @@ void flow_if_otherwise(){
             input[length_of_input - 1] = '\0';
             if(strlen(input) == 0)
                 continue;
+            input = parse_input_string(input);
             if (strcmp(input, "exit") == 0){
                 if (x_flag)
                     fprintf(stderr,"+ exit\n");
@@ -47,8 +48,10 @@ void flow_if_otherwise(){
             }
             num++;
             length_of_array = sizeof(command)/sizeof(command[0]) ;
-            command[length_of_array-1]='\0';
-            for(;(command[num] = strtok(NULL, " \t")) != NULL;num++);
+            command[length_of_array-1] = '\0';
+
+            for(;(command[num] = strtok(NULL, " \t") ) != NULL;num++);
+
             if(num>0){
                 execute_commands(num,command);
             }else{
@@ -66,11 +69,17 @@ void flow_if_otherwise(){
 */
 
 int execute_commands(int num,char *commands[]){
-    int i=0, num_of_pipes=0;
+    int i=0, num_of_pipes=0,m=0;
     bool if_pipe=false;
     bool if_redirection_io_with_pipe=false;
-    char *duplicate[num+1];
-    bzero(duplicate,num);
+    char **duplicate;
+
+    duplicate = malloc(num+1);
+    /* because memset and bzero didn't work for me */
+    while(duplicate[m]!=NULL){
+        duplicate[m]=0;
+        m++;
+    }   
     bool background = false;
     if(strcmp("&",commands[num-1])==0){
         background = true;
@@ -108,7 +117,7 @@ int execute_commands(int num,char *commands[]){
         }
         if(check_if_redirect_io_and_create_a_copy(commands,duplicate)){
             /* call the redirect input execution */
-            duplicate[num-1]=NULL;
+            duplicate[num]=NULL;
             if(redirect_commands(commands,duplicate,num,background)==EXIT_FAILURE){
                 return EXIT_FAILURE;
             };
@@ -232,6 +241,64 @@ bool check_if_redirect_io_and_create_a_copy(char *commands[],char *duplicate[]){
     return if_redirect;
 }
 
+
+int
+get_length(char *input) {
+    int index, size;
+    int length;
+
+    length = strlen(input);
+    size = 0;
+    
+    for (index = 0; index < length; index++) {
+        if (input[index] == '>' || input[index] == '<' || input[index] == '|') {
+            size += 3;
+        } else {
+            size++;
+        }
+    }
+
+    return size;
+}
+
+char* parse_input_string(char* input){
+    char *output;
+    int index, token_index;
+
+    int estimated_length = get_length(input);
+    int input_length = strlen(input);
+
+    if ((output = malloc(estimated_length + 1)) == NULL) {
+        return NULL;
+    }
+
+    token_index = 0;
+
+    for (index = 0; index < input_length; index++) {
+        if (input[index] == '>' || input[index] == '<' || input[index] == '|') {
+            output[token_index] = ' ';
+            token_index++;
+            output[token_index] = input[index];
+            token_index++;
+            if (input[index] == '>') {
+                if ((input_length - index) > 1) {
+                    if (input[index + 1] == '>') {
+                        output[token_index] = input[index];
+                        token_index++;
+                        index++;
+                    }
+                }
+            }
+            output[token_index] = ' ';
+            token_index++;
+        } else {
+            output[token_index] = input[index];
+            token_index++;
+        }
+    }
+    output[token_index] = '\0';
+    return output;
+}
 /* call in case of redirect commands that is when we have >, >> or < in the commands */
 int redirect_commands(char *commands[],char* duplicate[],int command_length,bool background){
     for(int i=0;i<command_length;i++){
