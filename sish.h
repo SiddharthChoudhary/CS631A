@@ -30,7 +30,7 @@ void flow_if_otherwise();
 int execute_commands(int num,char *commands[]);
 int execute_pipe(char *commands[],int length_token);
 int call_builtin_cd_exit_echo(int number_of_commands,char *commands[]);
-int redirect_commands(char *commands[],int number_of_commands,bool background);
+int redirect_commands(char *commands[],char* duplicate[],int number_of_commands,bool background);
 bool check_if_redirect_io_and_create_a_copy(char *commands[],char *duplicate[]);
 int execute_with_execvp(char* commands[],char* input,char* output,bool append, bool background_process,bool redirection);
 int redirect_to_std_input_output_from_fd(char* input,char* output,bool append);

@@ -111,6 +111,9 @@ int execute_pipe(char *commands[],int length_token){
         (p = strtok_r(NULL, "|", &last)), i++) {
             cmds[i] = malloc(length_token*sizeof(char*));
             j=0;
+                if(x_flag){
+                fprintf(stdout,"+ %s\n",p);
+            }
             for ((inner_breaking = strtok_r(p, " ", &inner_last)); inner_breaking;
                 (inner_breaking = strtok_r(NULL, " ", &inner_last)), k++){
                     cmds[i][j]=inner_breaking;
@@ -144,7 +147,7 @@ int execute_pipe(char *commands[],int length_token){
                 perror("Not Valid Arguement:\n");
                 kill(getpid(),SIGTERM);
             }
-			exit(1);
+            exit(EXIT_SUCCESS);
 		}
 		else {
 			wait(NULL); 		

@@ -8,8 +8,8 @@ void flow_if_c_flag_is_on(char* command){
             exit(EXIT_FAILURE);
         }
         num++;
-        while ((commands[num] = strtok(NULL, " \t\n")) != NULL)
-            num++;
+        for(;(commands[num] = strtok(NULL, " \t\n")) != NULL;num++);
+        execute_commands(num,commands);
     }
 
 }
@@ -48,8 +48,7 @@ void flow_if_otherwise(){
             num++;
             length_of_array = sizeof(command)/sizeof(command[0]) ;
             command[length_of_array-1]='\0';
-            while ((command[num] = strtok(NULL, " \t")) != NULL)
-                num++;
+            for(;(command[num] = strtok(NULL, " \t")) != NULL;num++);
             if(num>0){
                 execute_commands(num,command);
             }else{
@@ -100,9 +99,17 @@ int execute_commands(int num,char *commands[]){
     if(if_pipe){
         execute_pipe(commands,num);
     }else{
+        if (x_flag) {
+            fprintf(stderr, "+ ");
+            for(int lm=0;commands[lm]!=NULL;lm++){
+                fprintf(stderr,"%s ",commands[lm]);
+            }
+            fprintf(stderr,"\n");
+        }
         if(check_if_redirect_io_and_create_a_copy(commands,duplicate)){
             /* call the redirect input execution */
-            if(redirect_commands(commands,num,background)==EXIT_FAILURE){
+            duplicate[num-1]=NULL;
+            if(redirect_commands(commands,duplicate,num,background)==EXIT_FAILURE){
                 return EXIT_FAILURE;
             };
         }else{
@@ -124,7 +131,7 @@ int call_builtin_cd_exit_echo(int number_of_commands,char *commands[]){
         if(x_flag){
             fprintf(stdout,X_FLAG_OUTPUT);
             for(int i=0;i<number_of_commands;i++){
-                fprintf(stdout,"%s",commands[i]);
+                fprintf(stdout,"%s ",commands[i]);
             }
             fprintf(stdout,"\n");
         }
@@ -137,14 +144,14 @@ int call_builtin_cd_exit_echo(int number_of_commands,char *commands[]){
                 return EXIT_FAILURE;
             }
             if(x_flag){
-                fprintf(stdout,X_FLAG_OUTPUT);
+                fprintf(stdout,"+cd \n");
             }
             return EXIT_SUCCESS;
         }else{
             if(x_flag){
                 fprintf(stdout,X_FLAG_OUTPUT);
                 for(int i=0;i<number_of_commands;i++){
-                    fprintf(stdout,"%s",commands[i]);
+                    fprintf(stdout,"%s ",commands[i]);
                 }
                 fprintf(stdout,"\n");
             }
@@ -164,7 +171,7 @@ int call_builtin_cd_exit_echo(int number_of_commands,char *commands[]){
         if(x_flag){
             fprintf(stdout,X_FLAG_OUTPUT);
             for(int k=0;k<number_of_commands;k++){
-                fprintf(stdout,"%s",commands[k]);
+                fprintf(stdout,"%s ",commands[k]);
             }
             fprintf(stdout,"\n");
         }
@@ -226,32 +233,32 @@ bool check_if_redirect_io_and_create_a_copy(char *commands[],char *duplicate[]){
 }
 
 /* call in case of redirect commands that is when we have >, >> or < in the commands */
-int redirect_commands(char *commands[],int command_length,bool background){
+int redirect_commands(char *commands[],char* duplicate[],int command_length,bool background){
     for(int i=0;i<command_length;i++){
-            if (commands[i+1] == NULL) {
-                perror("Insufficient Arguement ERROR: \n");
-                return EXIT_FAILURE;
-            }
+        if (commands[i+1] == NULL) {
+            perror("Insufficient Arguement ERROR: \n");
+            return EXIT_FAILURE;
+        }
         if(strcmp("<", commands[i]) == 0) {
             if ((commands[i+2] != NULL ) && (commands[i+ 3] != NULL) && (strcmp(">", commands[i+1 + 1]) == 0)) {
-                execute_with_execvp(commands, commands[i+1], commands[i+1 + 2], false, background,true);
+                execute_with_execvp(duplicate, commands[i+1], commands[i+1 + 2], false, background,true);
                 return  EXIT_SUCCESS;
             }else if ((commands[i+2] != NULL) && (commands[i+3] != NULL) && (strcmp(">>", commands[i+1 + 1])) == 0){
-                execute_with_execvp(commands, commands[i+1], commands[i+3], true, background,true);
+                execute_with_execvp(duplicate, commands[i+1], commands[i+3], true, background,true);
                 return EXIT_SUCCESS;
             }else{
-                execute_with_execvp(commands, commands[i+1], NULL, false, background,true);
+                execute_with_execvp(duplicate, commands[i+1], NULL, false, background,true);
                 return  EXIT_SUCCESS;
             }
         }
         if ((strcmp(">", commands[i]) == 0) && commands[i+1]!=NULL) {
             
-            execute_with_execvp(commands, NULL, commands[i+1], false, background,true);
+            execute_with_execvp(duplicate, NULL, commands[i+1], false, background,true);
             return EXIT_SUCCESS;
         }
         if ((strcmp(">>", commands[i]) == 0) && commands[i+1] != NULL) {
             
-            execute_with_execvp(commands, NULL, commands[i+1], true, background,true);
+            execute_with_execvp(duplicate, NULL, commands[i+1], true, background,true);
             return  EXIT_SUCCESS;
         }
     }
