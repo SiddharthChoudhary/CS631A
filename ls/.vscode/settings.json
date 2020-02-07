@@ -2,6 +2,8 @@
     "files.associations": {
         "ls.h": "c",
         "print.h": "c",
-        "unistd.h": "c"
+        "unistd.h": "c",
+        "common.h": "c",
+        "command.h": "c"
     }
 }

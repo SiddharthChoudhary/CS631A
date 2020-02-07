@@ -1,0 +1,83 @@
+commit 2c1c9602f8c44b573334e135db8a8cc3aa90438c
+Author: SiddharthChoudhary <firesid12@gmail.com>
+Date:   Wed Oct 16 09:07:31 2019 -0400
+
+    Last minute changes which didn't go through in the submission because of reverting back in the end.
+
+commit 9dcb6c32107def46fc76d1712e208db4708ec917
+Author: SiddharthChoudhary <firesid12@gmail.com>
+Date:   Tue Oct 15 12:21:13 2019 -0400
+
+    Few modifications for setuserid and setgrgid permissions
+
+commit 137e5c7823782f734861f9f0f8fcb965a2e5eefc
+Author: SiddharthChoudhary <firesid12@gmail.com>
+Date:   Tue Oct 15 00:02:07 2019 -0400
+
+    Finally working for access time
+
+commit 3ed12e94a55b84f4706970e1096efc7eba1833a0
+Author: SiddharthChoudhary <firesid12@gmail.com>
+Date:   Mon Oct 14 11:04:31 2019 -0400
+
+    with a one more step towards perfection-> changes like blocksize related where totalBytes is correct for now
+
+commit 5e7018fd523fa77c4b7ae89d7361f503f6bd0c0b
+Author: SiddharthChoudhary <firesid12@gmail.com>
+Date:   Sat Oct 12 16:37:52 2019 -0400
+
+    All working options atleast without considering the extreme edge conditions
+
+commit 8814cb5490403656dc27084ffb1a3a6d74d3a9df
+Author: SiddharthChoudhary <firesid12@gmail.com>
+Date:   Mon Oct 7 00:46:41 2019 -0400
+
+    Working version with 7 more options left to implement
+
+commit 2ca303a3878506faa4d4112c36aa91ea69b4480f
+Author: SiddharthChoudhary <firesid12@gmail.com>
+Date:   Sun Oct 6 18:01:04 2019 -0400
+
+    Commit with updated code and Notes
+
+commit 0861736c1a692460806641374e9550d2005caf4b
+Author: SiddharthChoudhary <firesid12@gmail.com>
+Date:   Sat Oct 5 10:29:30 2019 -0400
+
+    working version with -l -R
+
+commit 27edd85384ae484cb2461139365123b99571e2b7
+Author: SiddharthChoudhary <firesid12@gmail.com>
+Date:   Sat Sep 28 10:08:53 2019 -0400
+
+    Chdir code
+
+commit dc755f22f385c4781456283ac6bb21434abbbaf2
+Author: SiddharthChoudhary <firesid12@gmail.com>
+Date:   Mon Sep 16 17:53:18 2019 -0400
+
+    CS631A Notes pdf
+
+commit 5dbefacb86f2a898221f9ff0f3a6e520cd08803f
+Author: SiddharthChoudhary <firesid12@gmail.com>
+Date:   Mon Sep 16 14:55:50 2019 -0400
+
+    Adding the text Advanced Programming text book
+
+commit aa7de0f77a7df426411aae49dcc84a322672e0a6
+Author: SiddharthChoudhary <firesid12@gmail.com>
+Date:   Mon Sep 16 14:53:53 2019 -0400
+
+    Adding the complete working version of bbcp command
+
+commit 77d89d0562791865d65188664aa21b9a672ad6ba
+Author: SiddharthChoudhary <firesid12@gmail.com>
+Date:   Mon Sep 16 00:56:25 2019 -0400
+
+    Perfection
+
+commit 072f4aefc7f155df79f981f5542a0e34efca1bc9
+Author: SiddharthChoudhary <firesid12@gmail.com>
+Date:   Sun Sep 15 21:37:48 2019 -0400
+
+    Assignment 1

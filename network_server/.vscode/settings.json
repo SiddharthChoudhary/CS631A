@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "server.h": "c",
+        "config.h": "c",
+        "select.h": "c",
+        "utils.h": "c"
+    }
+}
